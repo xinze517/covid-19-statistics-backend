@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dgut.covid19statistics.mapper.DeathsGlobalMapper">
+
+    <resultMap id="BaseResultMap" type="com.dgut.covid19statistics.domain.DeathsGlobal">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="provinceOrState" column="Province_or_State" jdbcType="VARCHAR"/>
+        <result property="countryOrRegion" column="Country_or_Region" jdbcType="VARCHAR"/>
+        <result property="date" column="date" jdbcType="DATE"/>
+        <result property="count" column="count" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,Province_or_State,Country_or_Region,
+        date,count
+    </sql>
+    <insert id="insertBatch">
+        INSERT INTO `deaths_global` (`Province_or_State`, `Country_or_Region`, `date`, `count`)
+        VALUES
+        <foreach collection="globals" item="global" separator=",">
+            (#{global.provinceOrState}, #{global.countryOrRegion}, #{global.date}, #{global.count})
+        </foreach>
+    </insert>
+    <select id="getNewestDate" resultType="java.time.LocalDate">
+        SELECT MAX(`date`)
+        FROM `deaths_global`
+        group by `Country_or_Region`
+        LIMIT 1;
+    </select>
+    <select id="countByAllCountryOrRegion" resultType="com.dgut.covid19statistics.domain.Record">
+        SELECT Country_or_Region, SUM(count) AS `count`
+        FROM deaths_global dg
+        where date = #{date}
+        group by Country_or_Region
+        order by Country_or_Region
+    </select>
+    <select id="countGlobalByDate" resultType="java.lang.Integer">
+        SELECT SUM(count)
+        FROM deaths_global dg
+        WHERE date=#{date}
+        GROUP BY date
+    </select>
+    <select id="countSelective" resultType="java.lang.Integer">
+        SELECT SUM(count)
+        FROM deaths_global dg
+        <where>
+            <if test="ignores != null and ignores.size() > 0">
+                Country_or_Region NOT IN
+                <foreach collection="ignores" item="country" open="("
+                         close=")" separator=",">
+                    #{country}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY date
+        ORDER BY date;
+    </select>
+</mapper>
